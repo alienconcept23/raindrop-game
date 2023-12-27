@@ -1,0 +1,142 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+#define LEFT_BUTTON_PIN 12
+#define RIGHT_BUTTON_PIN 13
+
+#define BUCKET_COLOR SSD1306_WHITE
+#define RAINDROP_COLOR SSD1306_WHITE
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+int leftButtonState = HIGH;
+int rightButtonState = HIGH;
+int lastLeftButtonState = HIGH;
+int lastRightButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+
+int bucketWidth = 20;
+int bucketHeight = 10;
+int bucketPosition = SCREEN_WIDTH / 2 - bucketWidth / 2;
+int raindropX, raindropY;
+int raindropsCaught = 0;
+int targetRaindrops = 10;
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(LEFT_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(RIGHT_BUTTON_PIN, INPUT_PULLUP);
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;)
+      ;
+  }
+
+  showStartScreen();
+  delay(2000);
+  display.clearDisplay();
+}
+
+void loop() {
+  if (raindropsCaught < targetRaindrops) {
+    playGame();
+  } else {
+    showYouWinScreen();
+  }
+}
+
+void playGame() {
+  readButtonInputs();
+
+  display.clearDisplay();
+  // Draw open bucket (rectangle outline)
+  display.drawRect(bucketPosition, SCREEN_HEIGHT - bucketHeight, bucketWidth, bucketHeight, BUCKET_COLOR);
+
+  raindropY++;
+
+  if (raindropY > SCREEN_HEIGHT) {
+    raindropX = random(SCREEN_WIDTH);
+    raindropY = 0;
+  }
+
+  display.drawPixel(raindropX, raindropY, RAINDROP_COLOR);
+
+  if (raindropY > SCREEN_HEIGHT - bucketHeight && raindropX > bucketPosition && raindropX < bucketPosition + bucketWidth) {
+    raindropsCaught++;
+    raindropY = -10; // Move the raindrop off the screen
+  }
+
+  display.display();
+  delay(50); // Adjust delay for game speed
+}
+
+void showYouWinScreen() {
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 20);
+  display.println("You Win!");
+  display.setCursor(10, 40);
+  display.print("Raindrops: ");
+  display.println(raindropsCaught);
+  display.display();
+}
+
+void showStartScreen() {
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 20);
+  display.println("Press any button");
+  display.setCursor(10, 40);
+  display.print("to start!");
+  display.display();
+}
+
+void readButtonInputs() {
+  int leftReading = digitalRead(LEFT_BUTTON_PIN);
+  int rightReading = digitalRead(RIGHT_BUTTON_PIN);
+
+  if (leftReading != lastLeftButtonState) {
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (leftReading != leftButtonState) {
+      leftButtonState = leftReading;
+
+      if (leftButtonState == LOW) {
+        // Left button is pressed
+        // Add any action you want for left button press
+      }
+    }
+  }
+
+  lastLeftButtonState = leftReading;
+
+  // Repeat the same process for the right button
+  if (rightReading != lastRightButtonState) {
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (rightReading != rightButtonState) {
+      rightButtonState = rightReading;
+
+      if (rightButtonState == LOW) {
+        // Right button is pressed
+        // Add any action you want for right button press
+      }
+    }
+  }
+
+  lastRightButtonState = rightReading;
+}
+
